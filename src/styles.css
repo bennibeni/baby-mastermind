@@ -1,0 +1,69 @@
+:root {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #172d32;
+  background: #f6f9f8;
+  color-scheme: light;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+  padding: 24px 12px;
+  box-sizing: border-box;
+}
+
+/* Cornice della pagina: stesso oro delle strisce di gioco */
+main {
+  box-sizing: border-box;
+  border: 3px solid #bc8f44;
+  border-radius: 18px;
+  background: #fffdf4;
+  box-shadow:
+    inset 0 0 0 6px #fdf7e6,
+    0 6px 24px rgba(40, 79, 67, 0.1);
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 38px;
+  padding-top: 17px;
+  border-top: 1px solid #aeb1a9;
+  color: #747a75;
+  font:
+    400 10px DM Mono,
+    monospace;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.projects-footer a {
+  color: #747a75;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.projects-footer a:hover {
+  color: #d14b37;
+}
+
+/* Schermi stretti: cornice più sottile per lasciare spazio al gioco */
+@media (max-width: 480px) {
+  body {
+    padding: 8px;
+  }
+  main {
+    border-width: 2px;
+    border-radius: 12px;
+    box-shadow: inset 0 0 0 4px #fdf7e6;
+  }
+}
+
+/* Schermi stretti: il punteggio esce dal posizionamento assoluto e non copre più il titolo */
+@media (max-width: 640px) {
+  .score {
+    position: static !important;
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+}
