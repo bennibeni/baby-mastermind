@@ -1,50 +1,14 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { COLORS, TOTAL, names, strip, symbols } from './model.js';
+import { COLORS, names, strip } from './model.js';
+import { generatePuzzle } from './puzzle.js';
 import "./styles.css";
 
 const ROW_HEIGHT = 30;
 const MAX_ROWS = 9; // 3 carte x 3 righe per striscia (lengths[k]-1=1 -> 3^1=3 per carta)
 // Stesso dominio di R22 (2 strisce da 2 posizioni, 3 colori, 81 combinazioni).
-// La vincitrice e i 3 (o 4) indizi sono generati casualmente ad ogni partita
-// (vedi generatePuzzle): si prova una vincitrice, si generano indizi casuali
-// e si tengono solo quelli che, applicati in ordine di valore decrescente,
-// restringono le combinazioni compatibili fino a un'unica sopravvissuta —
-// esattamente la vincitrice scelta. Se una vincitrice non produce un set di
-// indizi che convergono, se ne prova un'altra.
-
-function allTickets() {
-  const res = [];
-  function visit(pos, t) {
-    if (pos === TOTAL) { res.push([...t]); return; }
-    for (const s of symbols) visit(pos + 1, [...t, s]);
-  }
-  visit(0, []);
-  return res;
-}
-const UNIVERSE = allTickets();
-
-function randomTicket() {
-  return Array.from({ length: TOTAL }, () => symbols[Math.floor(Math.random() * 3)]);
-}
-
-// Quante delle 81 combinazioni totali restano compatibili con UN SOLO indizio
-// che dichiari quel valore (calcolato una volta: C(4,valore) * 2^(4-valore)).
-// Curiosamente non e' monotono: valore 1 e' il MENO restrittivo di tutti
-// (32 combinazioni compatibili), meno perfino di valore 0 (16).
-const COMPAT_BY_VALORE = { 0: 16, 1: 32, 2: 24, 3: 8 };
-
-// Difficolta' stimata da due fattori: quanto restringe il migliore indizio da
-// solo (piu' e' piccolo quel numero, piu' facile e' partire) e quanti indizi
-// bisogna incrociare in tutto (piu' ce ne sono, piu' lavoro mentale servono).
-function computeDifficulty(clues) {
-  const peak = Math.min(...clues.map(c => COMPAT_BY_VALORE[c.valore]));
-  const raw = peak + (clues.length - 2) * 4; // ~8 (facilissimo) .. ~40 (difficilissimo)
-  const score = Math.max(1, Math.min(10, Math.round(1 + 9 * (raw - 8) / 32)));
-  const label = score <= 2 ? 'Facilissima' : score <= 4 ? 'Facile' : score <= 6 ? 'Media' : score <= 8 ? 'Difficile' : 'Difficilissima';
-  return label;
-}
+// Generazione, riduzione agli indizi necessari, difficoltà e spiegazione: src/puzzle.js.
 
 const DIFFICULTY_COLORS = {
   Facilissima: '#2e7d32',
@@ -53,43 +17,6 @@ const DIFFICULTY_COLORS = {
   Difficile: '#e08e2d',
   Difficilissima: '#c0392b',
 };
-
-function generatePuzzle() {
-  for (let attempt = 0; attempt < 500; attempt++) {
-    const winner = randomTicket();
-    const seen = new Set(); const guesses = [];
-    for (let i = 0; i < 40; i++) {
-      const g = randomTicket();
-      const key = g.join('');
-      if (key === winner.join('') || seen.has(key)) continue;
-      seen.add(key);
-      const valore = g.filter((s, idx) => s === winner[idx]).length;
-      guesses.push({ guess: g, valore });
-    }
-    // Mischiamo invece di ordinare per valore decrescente: ordinando sempre dal
-    // punteggio piu' alto, su un pool di 40 tentativi quasi certamente esiste
-    // un indizio con 3 corrispondenze (l'unico punteggio praticamente
-    // raggiungibile, dato che 4 equivarrebbe a indovinare subito), e quello
-    // veniva scelto per primo quasi ogni partita: risultato, indizi sempre
-    // troppo simili e poco vari. Mischiando, i punteggi restano vari (0-3).
-    for (let i = guesses.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [guesses[i], guesses[j]] = [guesses[j], guesses[i]];
-    }
-    let survivors = UNIVERSE; const chosen = [];
-    for (const g of guesses) {
-      const next = survivors.filter(t => t.filter((s, idx) => s === g.guess[idx]).length === g.valore);
-      if (next.length < survivors.length || chosen.length === 0) { chosen.push(g); survivors = next; }
-      if (survivors.length === 1) break;
-      if (chosen.length >= 4) break;
-    }
-    if (survivors.length === 1 && survivors[0].join('') === winner.join('')) {
-      const clues = chosen.map((c, i) => ({ id: 'C' + (i + 1), valore: c.valore, guess: c.guess }));
-      return { winner, clues, difficulty: computeDifficulty(clues) };
-    }
-  }
-  return null;
-}
 
 function Swatch({ value, matches, size = 22 }) {
   return <span style={{ display: 'inline-flex', gap: 4 }}>{value.map((s, i) => {
@@ -103,10 +30,24 @@ function Swatch({ value, matches, size = 22 }) {
   })}</span>;
 }
 
+/** Difficoltà con i due contributi e i motivi. `full` aggiunge il percorso (solo a partita chiusa). */
+function WhyDifficulty({ d, full }) {
+  return <details className="why" open={full}>
+    <summary>Perché è {d.label.toLowerCase()}?</summary>
+    <div className="whyBars">{d.factors.map(f => <div key={f.label} className="whyRow">
+      <span className="whyLabel">{f.label}<small>{f.detail}</small></span>
+      <span className="whyTrack"><span style={{ width: `${f.max ? f.points / f.max * 100 : 0}%` }} /></span>
+      <span className="whyPts">+{f.points}</span>
+    </div>)}</div>
+    <ul>{d.before.map(t => <li key={t}>{t}</li>)}{full && <li><strong>{d.after}</strong></li>}</ul>
+    <small className="whyNote">Punteggio {d.score}/10 = 1 + 9 × (combinazioni dopo l’indizio migliore + 4 per ogni indizio oltre il secondo − 8) / 32.</small>
+  </details>;
+}
+
 function ClueInfo({ clue }) {
   return <div style={{ flex: '1 1 130px', padding: 12, borderRadius: 10, background: '#f1f0ea', textAlign: 'center' }}>
     <div style={{ marginBottom: 6 }}>
-      <span style={{ fontSize: 12, color: '#55625a' }}><strong>{clue.valore}</strong> colori nella giusta posizione</span>
+      <span style={{ fontSize: 11, fontWeight: 800, color: '#6b5a2e', marginRight: 6 }}>{clue.id}</span><span style={{ fontSize: 12, color: '#55625a' }}><strong>{clue.valore}</strong> {clue.valore === 1 ? 'colore' : 'colori'} nella giusta posizione</span>
     </div>
     <Swatch value={clue.guess} size={20} />
   </div>;
@@ -217,7 +158,7 @@ export default function Page() {
     <p style={{ fontSize: 11, letterSpacing: 1, fontWeight: 700, color: '#64796b', margin: 0 }}>Baby Mastermind</p>
     <h1 style={{ fontSize: 26, margin: '4px 0 6px', textAlign: 'center' }}>Trova la combinazione vincente</h1>
     <p style={{ margin: '0 0 14px', color: '#55625a', fontSize: 14 }}>
-      Questi sono gli indizi. Ragiona su di loro prima di muovere le strisce: esiste esattamente <strong>1</strong> combinazione compatibile con tutti.
+      Questi sono gli indizi. Ragiona su di loro prima di muovere le strisce: esiste esattamente <strong>1</strong> combinazione compatibile con tutti, e ogni indizio serve.
     </p>
 
     <div className="clues" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
@@ -226,7 +167,8 @@ export default function Page() {
 
     {isCriticalNext && <div style={{ padding: '12px 16px', background: '#fdf3d9', border: '2px solid #bc8f44', borderRadius: 10, marginBottom: 16, fontSize: 14, textAlign: 'center' }}>
       Trova l'unica combinazione valida al primo colpo.
-      <div style={{ marginTop: 4, fontSize: 13, color: '#6b5a2e' }}>Difficoltà: <strong style={{ background: '#e3e0d6', color: DIFFICULTY_COLORS[puzzle.difficulty], padding: '2px 8px', borderRadius: 6 }}>{puzzle.difficulty}</strong></div>
+      <div style={{ marginTop: 4, fontSize: 13, color: '#6b5a2e' }}>Difficoltà: <strong style={{ background: '#e3e0d6', color: DIFFICULTY_COLORS[puzzle.difficulty.label], padding: '2px 8px', borderRadius: 6 }}>{puzzle.difficulty.label} · {puzzle.difficulty.score}/10</strong></div>
+      <WhyDifficulty d={puzzle.difficulty} full={false} />
     </div>}
 
     {misses === 1 && !barred && !won && <div style={{ padding: '12px 16px', background: '#fdf3d9', border: '2px solid #bc8f44', borderRadius: 10, marginBottom: 16, fontSize: 14, textAlign: 'center' }}>
@@ -239,6 +181,8 @@ export default function Page() {
         Ricomincia
       </button>
     </div>}
+
+    {barred && !won && <WhyDifficulty d={puzzle.difficulty} full />}
 
     {lastFailedAttempt && !won && <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16, fontSize: 13, color: '#55625a' }}>
       <span>Tentativo non riuscito:</span>
@@ -301,6 +245,7 @@ export default function Page() {
       <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 14 }}>
         {lastAttempt.guessFlat.map((s, k) => <Swatch key={k} value={[s]} size={30} />)}
       </div>
+      <WhyDifficulty d={puzzle.difficulty} full />
       <button onClick={resetGame} style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: '#284f43', color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}>
         Nuova partita
       </button>
