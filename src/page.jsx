@@ -30,17 +30,20 @@ function Swatch({ value, matches, size = 22 }) {
   })}</span>;
 }
 
-/** Difficoltà con i due contributi e i motivi. `full` aggiunge il percorso (solo a partita chiusa). */
+const fmt = (x, sign = false) => (x = Math.abs(x) < 0.05 ? 0 : x, (sign && x > 0 ? '+' : '') + x.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 }));
+
+/** Indice di difficoltà con le sei voci (positive: più difficile, negative: aiuti). `full` aggiunge il percorso. */
 function WhyDifficulty({ d, full }) {
+  const scale = 6;   // lunghezza della barra per 6 punti
   return <details className="why" open={full}>
     <summary>Perché è {d.label.toLowerCase()}?</summary>
-    <div className="whyBars">{d.factors.map(f => <div key={f.label} className="whyRow">
+    <div className="whyBars">{d.factors.map(f => <div key={f.key} className={`whyRow${f.points === 0 ? ' zero' : ''}`}>
       <span className="whyLabel">{f.label}<small>{f.detail}</small></span>
-      <span className="whyTrack"><span style={{ width: `${f.max ? f.points / f.max * 100 : 0}%` }} /></span>
-      <span className="whyPts">+{f.points}</span>
+      <span className="whyTrack"><span className={f.points < 0 ? 'neg' : 'pos'} style={{ width: `${Math.min(100, Math.abs(f.points) / scale * 100)}%` }} /></span>
+      <span className="whyPts">{fmt(f.points, true)}</span>
     </div>)}</div>
     <ul>{d.before.map(t => <li key={t}>{t}</li>)}{full && <li><strong>{d.after}</strong></li>}</ul>
-    <small className="whyNote">Punteggio {d.score}/10 = 1 + 9 × (combinazioni dopo l’indizio migliore + 4 per ogni indizio oltre il secondo − 8) / 32.</small>
+    <small className="whyNote">Indice {fmt(d.index)} = 1 + somma delle voci. In ocra ciò che rende più difficile, in verde gli aiuti. Nessun arrotondamento: l’etichetta dipende solo da soglie sull’indice.</small>
   </details>;
 }
 
@@ -167,7 +170,7 @@ export default function Page() {
 
     {isCriticalNext && <div style={{ padding: '12px 16px', background: '#fdf3d9', border: '2px solid #bc8f44', borderRadius: 10, marginBottom: 16, fontSize: 14, textAlign: 'center' }}>
       Trova l'unica combinazione valida al primo colpo.
-      <div style={{ marginTop: 4, fontSize: 13, color: '#6b5a2e' }}>Difficoltà: <strong style={{ background: '#e3e0d6', color: DIFFICULTY_COLORS[puzzle.difficulty.label], padding: '2px 8px', borderRadius: 6 }}>{puzzle.difficulty.label} · {puzzle.difficulty.score}/10</strong></div>
+      <div style={{ marginTop: 4, fontSize: 13, color: '#6b5a2e' }}>Difficoltà: <strong style={{ background: '#e3e0d6', color: DIFFICULTY_COLORS[puzzle.difficulty.label], padding: '2px 8px', borderRadius: 6 }}>{puzzle.difficulty.label} · {fmt(puzzle.difficulty.index)}</strong></div>
       <WhyDifficulty d={puzzle.difficulty} full={false} />
     </div>}
 
@@ -254,6 +257,7 @@ export default function Page() {
       <a href="https://links-page-bennibeni.vercel.app/">
         &larr; All projects
       </a>
+      <a href="./laboratorio">Laboratorio della difficoltà &rarr;</a>
     </footer>
   </main>;
 }

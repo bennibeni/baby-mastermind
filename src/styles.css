@@ -79,3 +79,5 @@ footer {
 .whyTrack{height:10px;background:#efe6cc;border-radius:5px;overflow:hidden}.whyTrack span{display:block;height:100%;background:#bc8f44;border-radius:5px}
 .whyPts{font-variant-numeric:tabular-nums;font-weight:700;text-align:right}
 .whyNote{display:block;font-size:11px;color:#8a7d5c;margin-top:4px}
+.whyTrack span.neg{background:#5b9a6b}
+.whyRow.zero{opacity:.55}

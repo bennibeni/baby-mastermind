@@ -40,19 +40,50 @@ export function minimalClues(clues) {
 }
 const popcount = m => { let c = 0; for (; m; m &= m - 1) c++; return c; };
 
-/**
- * Difficoltà da due fattori: quanto restringe l'indizio migliore da solo (punto di partenza)
- * e quanti indizi bisogna incrociare. Restituisce anche i singoli contributi, per spiegarla.
- */
-export function computeDifficulty(clues) {
+const C4 = [1, 4, 6, 4, 1];   // C(4, valore): in quanti modi si scelgono le posizioni giuste
+// Rendimenti decrescenti: il primo aiuto di un tipo vale 1, il secondo mezzo, il terzo un quarto.
+const diminishing = k => [0, 1, 1.5, 1.75, 1.875][Math.min(k, 4)];
+
+/** Le proprietà della posizione che entrano nella difficoltà. */
+export function properties(clues) {
   const best = clues.reduce((a, c) => (COMPAT_BY_VALORE[c.valore] < COMPAT_BY_VALORE[a.valore] ? c : a));
-  const peak = COMPAT_BY_VALORE[best.valore];
-  const extra = (clues.length - 2) * 4;
-  const raw = peak + extra;                              // 8 (facilissimo) .. 40 (difficilissimo)
-  const score = Math.max(1, Math.min(10, Math.round(1 + 9 * (raw - 8) / 32)));
-  const label = score <= 2 ? 'Facilissima' : score <= 4 ? 'Facile' : score <= 6 ? 'Media' : score <= 8 ? 'Difficile' : 'Difficilissima';
-  return { score, label, raw, peak, extra, best };
+  let vicini = 0;
+  for (let a = 0; a < clues.length; a++) for (let b = a + 1; b < clues.length; b++)
+    if (clues[a].guess.filter((s, k) => s !== clues[b].guess[k]).length === 1) vicini++;
+  return {
+    best,
+    peak: COMPAT_BY_VALORE[best.valore],                               // combinazioni dopo l'indizio migliore
+    n: clues.length,                                                   // indizi da incrociare
+    casi: clues.reduce((s, c) => s + C4[c.valore], 0),                 // ipotesi da esaminare
+    zeri: clues.filter(c => c.valore === 0).length,                    // indizi a valore 0
+    mono: clues.filter(c => new Set(c.guess).size === 1).length,       // indizi monocolore
+    vicini,                                                            // coppie che differiscono in una sola posizione
+  };
 }
+
+/**
+ * Indice di difficoltà CONTINUO (nessun arrotondamento, nessun limite): 1 + somma delle voci.
+ * Le voci positive rendono più difficile, le negative sono aiuti. Due scelte non lineari:
+ * - le ipotesi da esaminare pesano in scala logaritmica (da 2 a 4 è un salto, da 20 a 22 quasi nulla);
+ * - gli aiuti dello stesso tipo hanno rendimenti decrescenti.
+ */
+export function difficultyIndex(clues) {
+  const p = properties(clues);
+  const factors = [
+    { key: 'partenza', label: 'Punto di partenza', detail: `${p.peak} combinazioni dopo l’indizio migliore`, points: (p.peak - 8) / 4 },
+    { key: 'incrocio', label: 'Indizi da incrociare', detail: `${p.n} indizi`, points: (p.n - 2) * 1.5 },
+    { key: 'casi', label: 'Ipotesi da esaminare', detail: `${p.casi} in tutto`, points: 2.5 * Math.log2(p.casi / 2) / Math.log2(12) },
+    { key: 'zeri', label: 'Indizi a valore 0', detail: p.zeri ? `${p.zeri}: escludono un colore da ogni posizione` : 'nessuno', points: -diminishing(p.zeri) },
+    { key: 'mono', label: 'Indizi monocolore', detail: p.mono ? `${p.mono}: si leggono al volo` : 'nessuno', points: -diminishing(p.mono) },
+    { key: 'vicini', label: 'Indizi quasi uguali', detail: p.vicini ? `${p.vicini} ${p.vicini === 1 ? 'coppia' : 'coppie'} diverse in una sola posizione` : 'nessuna coppia', points: -0.75 * diminishing(p.vicini) },
+  ];
+  const index = 1 + factors.reduce((s, f) => s + f.points, 0);
+  return { index, label: labelOf(index), factors, props: p };
+}
+
+// Soglie scelte sulla distribuzione delle partite generate: circa 21/30/16/21/12%.
+export const LABEL_THRESHOLDS = [[3.25, 'Facilissima'], [4.5, 'Facile'], [6, 'Media'], [9, 'Difficile'], [Infinity, 'Difficilissima']];
+export const labelOf = index => LABEL_THRESHOLDS.find(([t]) => index < t)[1];
 
 /** Percorso migliore: a ogni passo l'indizio che lascia meno combinazioni. */
 export function bestPath(clues) {
@@ -67,25 +98,24 @@ export function bestPath(clues) {
 }
 
 /**
- * Spiegazione in italiano. `before` non rivela nulla che non si veda già negli indizi
- * (valore migliore e numero di indizi); `after` aggiunge il percorso, da mostrare a partita chiusa.
+ * Spiegazione in italiano. `before` non rivela nulla che non si veda già negli indizi;
+ * `after` aggiunge il percorso più rapido, da mostrare a partita chiusa.
  */
 export function explain(clues) {
-  const d = computeDifficulty(clues);
-  const n = clues.length;
-  const start = d.peak <= 8 ? 'un ottimo punto di partenza' : d.peak <= 16 ? 'un buon punto di partenza' : d.peak <= 24 ? 'un punto di partenza debole' : 'quasi nessun aiuto per partire';
-  const ties = clues.filter(c => c.valore === d.best.valore).length;
+  const d = difficultyIndex(clues), p = d.props;
+  const start = p.peak <= 8 ? 'un ottimo punto di partenza' : p.peak <= 16 ? 'un buon punto di partenza' : p.peak <= 24 ? 'un punto di partenza debole' : 'quasi nessun aiuto per partire';
+  const ties = clues.filter(c => c.valore === p.best.valore).length;
   const before = [
-    `L’indizio più stretto ha ${d.best.valore} ${d.best.valore === 1 ? 'colore' : 'colori'} al posto giusto: da solo lascia ${d.peak} combinazioni su ${UNIVERSE.length}, ${start}${ties > 1 ? ` (ce ne sono ${ties} così)` : ''}.`,
-    n === 2 ? 'Bastano 2 indizi da incrociare.' : `Bisogna incrociare tutti e ${n} gli indizi: nessuno è superfluo.`,
+    `L’indizio più stretto ha ${p.best.valore} ${p.best.valore === 1 ? 'colore' : 'colori'} al posto giusto: da solo lascia ${p.peak} combinazioni su ${UNIVERSE.length}, ${start}${ties > 1 ? ` (ce ne sono ${ties} così)` : ''}.`,
+    p.n === 2 ? 'Bastano 2 indizi da incrociare.' : `Bisogna incrociare tutti e ${p.n} gli indizi: nessuno è superfluo.`,
+    `Le ipotesi da esaminare sono ${p.casi}: un indizio con 2 colori giusti ne apre 6, uno con 1 o 3 ne apre 4, uno con 0 una sola.`,
   ];
-  if (d.best.valore === 0) before.push('Un indizio con 0 colori giusti è prezioso: esclude un colore da ogni posizione.');
+  if (p.zeri) before.push(p.zeri === 1 ? 'L’indizio a valore 0 è prezioso: esclude un colore da ogni posizione.' : `Gli indizi a valore 0 sono ${p.zeri}: il primo aiuta molto, i successivi un po’ meno perché ripetono in parte le stesse esclusioni.`);
+  if (p.mono) before.push(`${p.mono === 1 ? 'C’è un indizio monocolore' : `Ci sono ${p.mono} indizi monocolore`}: si leggono al volo (per esempio «3 giusti» su quattro gialli vuol dire esattamente tre gialli).`);
+  if (p.vicini) before.push(`${p.vicini === 1 ? 'Due indizi differiscono' : `${p.vicini} coppie di indizi differiscono`} in una sola posizione: confrontandoli si capisce subito il colore di quella posizione.`);
   const path = bestPath(clues);
   const after = `Percorso più rapido: ${path.order.join(' → ')}. Combinazioni rimaste: ${path.chain.join(' → ')}.`;
-  return { ...d, factors: [
-    { label: 'Punto di partenza', detail: `${d.peak} combinazioni dopo l’indizio migliore`, points: d.peak - 8, max: 24 },
-    { label: 'Indizi da incrociare', detail: `${n} indizi`, points: d.extra, max: 8 },
-  ], before, after, path };
+  return { ...d, before, after, path };
 }
 
 /**

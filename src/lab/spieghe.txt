@@ -1,0 +1,29 @@
+con le impostazioni predefinite vince la rete neurale, e con un buon margine. Ecco perché, e perché non conviene fermarsi qui.
+
+Perché vince la rete. La formula è una somma di sei voci, ma due sono curve: le ipotesi da esaminare pesano in scala logaritmica, e gli aiuti dello stesso tipo valgono sempre meno. La rete neurale sa approssimare sia le somme sia le curve, quindi ricostruisce l'indice quasi alla perfezione: errore medio di circa 0,02 punti, 98% delle previsioni entro ±0,1.
+
+La regressione lineare coglie bene le somme ma non le curve, e si ferma a circa 0,09.
+Albero e foresta gestiscono le curve ma devono spezzettare le somme in tanti gradini, e restano intorno a 0,1.
+
+Perché non fermarsi qui. Con la divisione «posizioni a caso», circa il 96% delle posizioni di prova ha una combinazione di proprietà già vista in addestramento, quindi quel risultato misura soprattutto la memoria. Due prove per capire che cosa ha imparato davvero:
+
+Scegli «Combinazioni mai viste» e rilancia. La classifica cambia: albero e foresta crollano (errore di circa 0,5) perché non sanno estrapolare; rete e regressione lineare tengono, intorno a 0,14–0,19. Lì la rete non ha più un vantaggio netto sulla lineare.
+Guarda la sezione 04 con la rete selezionata, poi premi «Svela la formula». Le proprietà con la ★ dovrebbero stare in cima. Quelle senza stella con importanza alta sono le scorciatoie che la rete usa al posto di quelle vere (per esempio il valore minimo o i conteggi per valore).
+
+La rete è la più precisa ma anche la meno leggibile. È la regressione lineare, con i pesi della sezione 05, a mostrare quanto vale ogni proprietà: 0,25 per le combinazioni dopo l'indizio migliore (vero 0,25), −0,97 per gli indizi monocolore (vero −1 il primo, −0,5 il secondo). Questo compromesso tra precisione e spiegabilità si vede solo mettendo i modelli uno accanto all'altro.
+
+Solo l'albero ragiona per regole del tipo «se… allora…»; gli altri modelli imparano in modi diversi. Hanno in comune soltanto i dati: le stesse posizioni dell'80%, le stesse proprietà e lo stesso indice da imparare.
+
+I modelli del laboratorio: quanto si avvicinano all'app
+
+Albero di regressione: divide le posizioni con una sequenza di domande su una proprietà alla volta («numero di indizi ≤ 3?», «ipotesi da esaminare ≤ 11?») e a ogni foglia assegna la media degli indici che ci arrivano. Sono le regole della sezione 06.
+Random Forest: 100 alberi, ognuno con regole proprie. Ogni albero vede un campione diverso delle posizioni (estratto con ripetizione) e a ogni nodo sceglie la domanda migliore tra 5 proprietà prese a caso sulle 14. La previsione è la media dei 100 risultati. Non ha quindi un unico insieme di regole leggibile, e le sue previsioni cambiano in modo più graduale di quelle di un albero solo.
+Regressione lineare: nessuna regola, una sola formula: indice ≈ costante + un peso per ogni proprietà. È quella della sezione 05. Non può dire «se succede questo, allora…»: ogni proprietà sposta l'indice sempre della stessa quantità.
+Rete neurale: nemmeno qui ci sono regole. Le proprietà passano attraverso 24 e poi 12 «neuroni», ciascuno una combinazione pesata delle proprietà ammorbidita da una curva. Il risultato è una funzione liscia, capace di seguire le curve della formula (logaritmo e rendimenti decrescenti), ma centinaia di pesi non si leggono come regole.
+
+In sintesi
+Chi imita meglio l'app: la rete neurale.
+Chi ne ha capito meglio la logica: la regressione lineare. È la più semplice e la più trasparente, e tiene meglio fuori dal già visto.
+Chi imita senza capire: alberi e foresta sono bravi sul noto e cedono sul nuovo.
+Sull'etichetta, tutti i modelli buoni sbagliano solo quando l'indice cade a pochi centesimi da una soglia. Lì l'errore dipende dal confine netto tra le etichette, non dal modello.
+
