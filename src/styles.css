@@ -69,15 +69,74 @@ footer {
 }
 
 /* Spiegazione della difficoltà */
-.why{margin:10px auto 0;max-width:560px;text-align:left;font-size:13px;color:#4a4330}
-.why summary{cursor:pointer;font-weight:700;color:#6b5a2e;text-align:center;list-style-position:inside}
-.why ul{margin:10px 0 6px;padding-left:18px;line-height:1.5}
-.why li{margin:3px 0}
-.whyBars{display:grid;gap:6px;margin-top:10px}
-.whyRow{display:grid;grid-template-columns:minmax(120px,1.2fr) 2fr 38px;gap:8px;align-items:center}
-.whyLabel{font-weight:600}.whyLabel small{display:block;font-weight:400;font-size:11px;color:#7a6c4a}
-.whyTrack{height:10px;background:#efe6cc;border-radius:5px;overflow:hidden}.whyTrack span{display:block;height:100%;background:#bc8f44;border-radius:5px}
-.whyPts{font-variant-numeric:tabular-nums;font-weight:700;text-align:right}
-.whyNote{display:block;font-size:11px;color:#8a7d5c;margin-top:4px}
-.whyTrack span.neg{background:#5b9a6b}
-.whyRow.zero{opacity:.55}
+.why {
+  margin: 10px auto 0;
+  max-width: 560px;
+  text-align: left;
+  font-size: 13px;
+  color: #4a4330;
+}
+.why summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #6b5a2e;
+  text-align: center;
+  list-style-position: inside;
+}
+.why ul {
+  margin: 10px 0 6px;
+  padding-left: 18px;
+  line-height: 1.5;
+}
+.why li {
+  margin: 3px 0;
+}
+.whyBars {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.whyRow {
+  display: grid;
+  grid-template-columns: minmax(120px, 1.2fr) 2fr 38px;
+  gap: 8px;
+  align-items: center;
+}
+.whyLabel {
+  font-weight: 600;
+}
+.whyLabel small {
+  display: block;
+  font-weight: 400;
+  font-size: 11px;
+  color: #7a6c4a;
+}
+.whyTrack {
+  height: 10px;
+  background: #efe6cc;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.whyTrack span {
+  display: block;
+  height: 100%;
+  background: #bc8f44;
+  border-radius: 5px;
+}
+.whyPts {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+.whyNote {
+  display: block;
+  font-size: 11px;
+  color: #8a7d5c;
+  margin-top: 4px;
+}
+.whyTrack span.neg {
+  background: #5b9a6b;
+}
+.whyRow.zero {
+  opacity: 0.55;
+}
